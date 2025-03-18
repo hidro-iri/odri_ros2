@@ -26,6 +26,16 @@ target_compile_features(example_robot PUBLIC c_std_99 cxx_std_14) # Require C99
 
 install(TARGETS example_robot DESTINATION lib/${PROJECT_NAME})
 
+add_executable(odri_control src/odri_control.cpp)
+ament_target_dependencies(odri_control rclcpp odri_ros2_msgs)
+target_include_directories(
+  odri_control PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                       $<INSTALL_INTERFACE:include> ${EIGEN3_INCLUDE_DIR})
+target_compile_features(odri_control PUBLIC c_std_99 cxx_std_14) # Require C99
+                                                                  # and C++14
+
+install(TARGETS odri_control DESTINATION lib/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights uncomment
@@ -35,8 +45,6 @@ if(BUILD_TESTING)
   # repo set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
-install(TARGETS example_robot DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 

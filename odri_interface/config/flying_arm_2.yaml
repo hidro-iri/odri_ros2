@@ -2,8 +2,7 @@ odri/robot_interface:
   ros__parameters:
     robot_yaml_name: "flying_arm_2.yaml"
     n_slaves: 1
-    safe_configuration: [-1.0, 2.8]
-    # safe_configuration: [0.0, 0.0]
+    safe_configuration: [-1.4, 2.8]
     safe_torque: 1.0
     safe_kp: 0.5
     safe_kd: 6.0

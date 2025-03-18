@@ -6,6 +6,8 @@ namespace odri_interface
 {
 RobotInterface::RobotInterface(const std::string& node_name) : Node{node_name}, StateMachineInterface(node_name)
 {
+    i_gdb = 0;
+
     declareParameters();
 
     // Build the robot yaml path
@@ -33,6 +35,7 @@ RobotInterface::RobotInterface(const std::string& node_name) : Node{node_name}, 
 
     positions_  = Eigen::VectorXd::Zero(odri_robot_->joints->GetNumberMotors());
     velocities_ = positions_;
+    torques_    = positions_;
 
     des_torques_    = Eigen::VectorXd::Zero(odri_robot_->joints->GetNumberMotors());
     des_positions_  = Eigen::VectorXd::Zero(odri_robot_->joints->GetNumberMotors());
@@ -99,15 +102,21 @@ void RobotInterface::callbackTimerSendCommands()
 
     positions_  = odri_robot_->joints->GetPositions();
     velocities_ = odri_robot_->joints->GetVelocities();
+    torques_    = odri_robot_->joints->GetMeasuredTorques();
 
     robot_state_msg_.header.stamp = get_clock()->now();
     robot_state_msg_.motor_states.clear();
+
+    if (odri_robot_->IsReady()) {
+        // printf("Ready at %ld.\n",i_gdb++);
+    }
 
     for (long int i = 0; i < positions_.size(); ++i) {
         odri_ros2_msgs::msg::MotorState m_state;
 
         m_state.position                = positions_(i);
         m_state.velocity                = velocities_(i);
+        m_state.torque                  = torques_(i);
         m_state.is_enabled              = odri_robot_->joints->GetEnabled()(i);
         m_state.has_index_been_detected = odri_robot_->joints->HasIndexBeenDetected()(i);
 
@@ -260,6 +269,8 @@ int main(int argc, char* argv[])
         std::make_shared<odri_interface::RobotInterface>("RobotInterface");
 
     rclcpp::executors::SingleThreadedExecutor executor;
+    // rclcpp::executors::StaticSingleThreadedExecutor executor;
+
     executor.add_node(master_board_iface);
 
     executor.spin();
