@@ -1,5 +1,5 @@
 robot:
-    interface: enxa0cec8792ab6
+    interface: enxa0cec8792aa5
     joint_modules:
         motor_numbers: [0, 1]
         motor_constants: 0.025
