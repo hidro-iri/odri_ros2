@@ -1,0 +1,14 @@
+odri/robot_interface:
+  ros__parameters:
+    robot_yaml_name: "solo12.yaml"
+    n_slaves: 6
+    # Postura de repòs: [FL_HAA, FL_HFE, FL_KFE, FR_HAA, FR_HFE, FR_KFE,
+    #                    HL_HAA, HL_HFE, HL_KFE, HR_HAA, HR_HFE, HR_KFE]
+    safe_configuration: [0.0,  0.8, -1.6,
+                         0.0,  0.8, -1.6,
+                         0.0, -0.8,  1.6,
+                         0.0, -0.8,  1.6]
+    safe_torque: 0.5
+    safe_kp: 3.0
+    safe_kd: 0.05
+    safe_current: 4.0
