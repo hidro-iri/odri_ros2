@@ -1,0 +1,38 @@
+robot:
+    interface: enxa0cec8792aa5   # <-- canvia per la teva interfície Ethernet
+    joint_modules:
+        # Ordre: FL_HAA, FL_HFE, FL_KFE, FR_HAA, FR_HFE, FR_KFE,
+        #        HL_HAA, HL_HFE, HL_KFE, HR_HAA, HR_HFE, HR_KFE
+        motor_numbers: [0, 3, 2, 1, 5, 4, 6, 9, 8, 7, 11, 10]
+        motor_constants: 0.025      # Nm/A  (T-Motor Antigravity 4004)
+        gear_ratios: 9.0            # 9:1 dual-stage belt
+        max_currents: 4.0           # A
+        reverse_polarities: [false, true, true, true, false, false,
+                              false, true, true, true, false, false]
+        lower_joint_limits: [-0.9, -1.45, -2.80,
+                              -0.9, -1.45, -2.80,
+                              -0.9, -1.45, -2.80,
+                              -0.9, -1.45, -2.80]
+        upper_joint_limits: [ 0.9,  1.45,  2.80,
+                               0.9,  1.45,  2.80,
+                               0.9,  1.45,  2.80,
+                               0.9,  1.45,  2.80]
+        max_joint_velocities: 80.0   # rad/s
+        safety_damping: 0.2
+    imu:
+        rotate_vector: [1, 2, 3]
+        orientation_vector: [1, 2, 3, 4]
+joint_calibrator:
+    # Direccions de calibratge per joint (de solo12.cpp ODRI oficial)
+    # FL_HAA=POS, FL_HFE=POS, FL_KFE=POS,
+    # FR_HAA=NEG, FR_HFE=POS, FR_KFE=POS,
+    # HL_HAA=POS, HL_HFE=POS, HL_KFE=POS,
+    # HR_HAA=NEG, HR_HFE=POS, HR_KFE=POS
+    search_methods: [POS, POS, POS, NEG, POS, POS,
+                     POS, POS, POS, NEG, POS, POS]
+    position_offsets: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # calibrar al primer arrencada
+    Kp: 3.0
+    Kd: 0.05
+    T: 3.0
+    dt: 0.001
