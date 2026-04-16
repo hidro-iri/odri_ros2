@@ -2,7 +2,7 @@
 
 ROS 2 tools to interface ODRI-based robots, developed by the [HiDRo group](https://www.iri.upc.edu/groups/34) at IRI (Institut de Robòtica i Informàtica Industrial, UPC–CSIC).
 
-This repository provides the full software stack to control robots built around the [ODRI master-board](https://github.com/open-dynamic-robot-initiative/master-board), both on real hardware and in Gazebo simulation. It is currently used with the **Borinot** aerial manipulator (flying arm).
+This repository provides the full software stack to control robots built around the [ODRI master-board](https://github.com/open-dynamic-robot-initiative/master-board), both on real hardware and in Gazebo simulation. It is currently used with the **Borinot** aerial manipulator (flying arm) and the **Solo12** quadruped.
 
 ---
 
@@ -70,12 +70,11 @@ Hardware interface node that communicates directly with the ODRI master board ov
 The node implements a **finite state machine** with the following transitions:
 
 ```
-IDLE ──enable──► ENABLED ──start──► RUNNING
-     ◄─disable──         ◄──stop──
-     calibrate ──► CALIBRATING ──► IDLE
+IDLE ──enable──► CALIBRATING_OFFSETS ──► CALIBRATING_SAFE_CONFIG ──► ENABLED ──start──► RUNNING
+                                                                      ◄─disable──        ◄──stop──
 ```
 
-During calibration the node performs encoder index search (positive or negative direction, as configured) and applies position offsets. A safe configuration is applied on disable.
+During calibration the node performs two phases: encoder index search (`CALIBRATING_OFFSETS`, direction per joint as configured) and movement to the safe configuration (`CALIBRATING_SAFE_CONFIG`). A safe configuration is applied on disable.
 
 > **Note:** The node requires `sudo` because it uses real-time Ethernet communication. The provided launch file handles this automatically by forwarding the necessary environment variables.
 
@@ -132,15 +131,26 @@ ros2 launch odri_ros2_hardware _robot_interface.launch.py \
 Gazebo Classic plugin (`OdriGazeboPlugin`) that simulates the ODRI interface, exposing the same ROS 2 topics as the hardware node so that `odri_ros2_examples` and other controllers work identically in simulation and on the real robot.
 
 **Subscribes to:**
-- `robot_command` (`RobotCommand`) — joint commands (position, velocity, torque, gains)
+- `/odri/robot_command` (`RobotCommand`) — joint commands (position, velocity, torque, gains)
 
 **Publishes:**
-- `robot_state` (`RobotState`) — simulated joint state
-- State machine status
+- `/odri/robot_state` (`RobotState`) — simulated joint state (~667 Hz)
+- `/odri/state_machine_status` (`StateMachineStatus`) — active state (5 Hz)
 
-The plugin implements the same IDLE → ENABLED → RUNNING state machine as the hardware node, and uses `hidro_ros2_utils::StateMachine` for transitions.
+The plugin implements the IDLE → ENABLED → RUNNING state machine (no calibration phase, unlike the hardware node), and uses `hidro_ros2_utils::StateMachine` for transitions.
 
-**Usage:** Include the plugin in the robot's SDF/URDF via the `hidro_robots` description package. The example launch file starts Gazebo automatically when `sim:=true`.
+The state transition service uses `hidro_ros2_utils/srv/TransitionCommand`:
+
+```bash
+ros2 service call /odri/robot_interface/state_transition \
+  hidro_ros2_utils/srv/TransitionCommand "{command: 'enable'}"
+```
+
+**Usage:** Include the plugin in the robot's SDF/URDF via the `hidro_robots` description package. Launch the Solo12 simulation with:
+
+```bash
+ros2 launch odri_ros2_examples solo12_gazebo.launch.py gui:=false
+```
 
 ---
 
@@ -151,10 +161,10 @@ A minimal example controller node (`OdriControl`) that demonstrates how to comma
 **Node:** `example_robot`
 
 **Subscribes to:**
-- `robot_state` (`RobotState`)
+- `/odri/robot_state` (`RobotState`)
 
 **Publishes to:**
-- `robot_command` (`RobotCommand`)
+- `/odri/robot_command` (`RobotCommand`)
 
 **Services exposed:**
 - `direct_command` (`DirectCommand`) — send a torque command with position limits
@@ -168,7 +178,7 @@ The node supports three internal control modes, selectable at runtime:
 | `direct` | Apply a desired torque with position-based saturation |
 | `transition` | Smooth polynomial trajectory between two configurations |
 
-**Launch (simulation):**
+**Launch (simulation — flying_arm_2):**
 
 ```bash
 ros2 launch odri_ros2_examples example_robot.launch.py sim:=true
@@ -180,7 +190,9 @@ ros2 launch odri_ros2_examples example_robot.launch.py sim:=true
 ros2 launch odri_ros2_examples example_robot.launch.py sim:=false
 ```
 
-This also starts `rqt_reconfigure` to tune control parameters online.
+Both launch files also start `rqt_reconfigure` to tune control parameters online.
+
+> **Note:** The `example_robot` node is designed for the 2-DOF flying arm. For Solo12 (12 joints), use `solo12_gazebo.launch.py` and a dedicated controller.
 
 ---
 
@@ -219,7 +231,7 @@ source install/setup.bash
 │         Controller / Planner            │
 │   (e.g. eagle_ros2 MPC, example_robot)  │
 └────────────┬───────────────▲────────────┘
-             │ /robot_command │ /robot_state
+             │ /odri/robot_command │ /odri/robot_state
      ┌───────▼───────────────┴────────┐
      │   odri_ros2_hardware            │  (real)
      │   odri_ros2_gazebo plugin       │  (sim)
