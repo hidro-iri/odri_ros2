@@ -1,0 +1,25 @@
+robot_interface:
+  ros__parameters:
+    # Name of the ODRI robot YAML file inside config/robots/
+    robot_yaml_name: "solo12.yaml"
+
+    # Number of uDriver boards (6 uDrivers x 2 motors = 12 joints)
+    n_slaves: 6
+
+    # Safe standing configuration (radians), joint order:
+    #   FL_HAA, FL_HFE, FL_KFE,
+    #   FR_HAA, FR_HFE, FR_KFE,
+    #   HL_HAA, HL_HFE, HL_KFE,
+    #   HR_HAA, HR_HFE, HR_KFE
+    safe_configuration: [ 0.0,  0.8, -1.6,
+                           0.0,  0.8, -1.6,
+                           0.0, -0.8,  1.6,
+                           0.0, -0.8,  1.6]
+
+    # PD gains applied when holding the safe configuration (ENABLED state)
+    safe_kp: 3.0
+    safe_kd: 0.05
+
+    # Torque and current limits during safe hold
+    safe_torque: 0.5   # Nm
+    safe_current: 4.0  # A

@@ -64,4 +64,9 @@ install(
   INCLUDES
   DESTINATION include)
 
+ament_environment_hooks(
+  "env-hooks/${PROJECT_NAME}.dsv.in"
+  "env-hooks/${PROJECT_NAME}.sh.in"
+)
+
 ament_package()

@@ -45,6 +45,12 @@ def generate_launch_description():
             default_value='False',
             description='Use event-based Gazebo physics (disables GUI)'))
 
+    ld.add_action(
+        DeclareLaunchArgument(
+            'gui',
+            default_value='true',
+            description='Set to false to disable Gazebo GUI (headless mode)'))
+
     # ── World file ─────────────────────────────────────────────────────────
     world_filename = PythonExpression([
         "'event_based.world' if ",
@@ -55,9 +61,11 @@ def generate_launch_description():
         [FindPackageShare('hidro_robots'), 'worlds', world_filename])
 
     enable_gui = PythonExpression([
-        "'false' if ",
+        "'false' if (",
         LaunchConfiguration('event_based_sim'),
-        " else 'true'",
+        " == 'True' or '",
+        LaunchConfiguration('gui'),
+        "' == 'false') else 'true'",
     ])
 
     # ── Gazebo ─────────────────────────────────────────────────────────────
