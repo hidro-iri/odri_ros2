@@ -45,7 +45,7 @@ def generate_launch_description():
     # ── Arguments ──────────────────────────────────────────────────────────
     default_params = os.path.join(
         get_package_share_directory('odri_ros2_hardware'),
-        'config', 'robots', 'solo12_params.yaml')
+        'config', 'solo12_params.yaml')
 
     ld.add_action(
         DeclareLaunchArgument(
