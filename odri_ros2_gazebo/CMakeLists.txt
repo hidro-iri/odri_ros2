@@ -14,8 +14,8 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(gazebo REQUIRED)
-find_package(gazebo_ros REQUIRED)
+find_package(gz-sim8 REQUIRED)
+find_package(gz-plugin2 REQUIRED COMPONENTS register)
 find_package(rclcpp REQUIRED)
 find_package(odri_ros2_interfaces REQUIRED)
 find_package(hidro_ros2_utils REQUIRED)
@@ -36,19 +36,21 @@ target_include_directories(
          $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(${ODRI_ROS2_GAZEBO_PLUGIN_NAME} rclcpp)
-ament_target_dependencies(${ODRI_ROS2_GAZEBO_PLUGIN_NAME} gazebo)
-ament_target_dependencies(${ODRI_ROS2_GAZEBO_PLUGIN_NAME} gazebo_ros)
 ament_target_dependencies(${ODRI_ROS2_GAZEBO_PLUGIN_NAME} odri_ros2_interfaces)
 ament_target_dependencies(${ODRI_ROS2_GAZEBO_PLUGIN_NAME} hidro_ros2_utils)
 ament_target_dependencies(${ODRI_ROS2_GAZEBO_PLUGIN_NAME} hidro_utils)
+
+target_link_libraries(${ODRI_ROS2_GAZEBO_PLUGIN_NAME}
+  gz-sim8::gz-sim8
+  gz-plugin2::gz-plugin2
+)
 
 list(APPEND ${PROJECT_NAME}_INSTALL_TARGETS ${ODRI_ROS2_GAZEBO_PLUGIN_NAME})
 
 # ---- INSTALL TARGETS ----
 ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(rclcpp)
-ament_export_dependencies(gazebo)
-ament_export_dependencies(gazebo_ros)
+ament_export_dependencies(gz-sim8)
 ament_export_dependencies(odri_ros2_interfaces)
 
 # Install folders

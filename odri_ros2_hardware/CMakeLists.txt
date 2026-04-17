@@ -12,6 +12,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(hidro_ros2_utils REQUIRED)
 find_package(odri_control_interface REQUIRED)
@@ -30,6 +31,7 @@ target_include_directories(
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} ament_index_cpp)
 ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} hidro_ros2_utils)
 ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} odri_ros2_interfaces)
 ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} rclcpp)

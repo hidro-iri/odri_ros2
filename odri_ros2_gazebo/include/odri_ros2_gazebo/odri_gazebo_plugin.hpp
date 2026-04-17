@@ -1,9 +1,15 @@
 #pragma once
 
+#include <thread>
+
 #include <Eigen/Dense>
 
 #include <rclcpp/rclcpp.hpp>
-#include <gazebo/common/Plugin.hh>
+#include <gz/sim/System.hh>
+#include <gz/sim/Model.hh>
+#include <gz/sim/Joint.hh>
+#include <gz/sim/EntityComponentManager.hh>
+#include <gz/sim/EventManager.hh>
 
 #include "odri_ros2_interfaces/msg/driver_state.hpp"
 #include "odri_ros2_interfaces/msg/master_board_state.hpp"
@@ -18,25 +24,37 @@
 namespace odri_ros2_gazebo_plugin
 {
 
-class OdriGazeboPlugin : public gazebo::ModelPlugin
+class OdriGazeboPlugin :
+    public gz::sim::System,
+    public gz::sim::ISystemConfigure,
+    public gz::sim::ISystemPreUpdate,
+    public gz::sim::ISystemPostUpdate
 {
   public:
     OdriGazeboPlugin();
+    ~OdriGazeboPlugin();
 
-    void Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf);
+    void Configure(const gz::sim::Entity &entity,
+                   const std::shared_ptr<const sdf::Element> &sdf,
+                   gz::sim::EntityComponentManager &ecm,
+                   gz::sim::EventManager &eventMgr) override;
+
+    void PreUpdate(const gz::sim::UpdateInfo &info,
+                   gz::sim::EntityComponentManager &ecm) override;
+
+    void PostUpdate(const gz::sim::UpdateInfo &info,
+                    const gz::sim::EntityComponentManager &ecm) override;
 
   private:
-    void initializeRosObjects(sdf::ElementPtr sdf);
-    void parseSdf(sdf::ElementPtr sdf);
+    void initializeRosObjects(const std::shared_ptr<const sdf::Element> &sdf);
+    void parseSdf(const std::shared_ptr<const sdf::Element> &sdf,
+                  gz::sim::EntityComponentManager &ecm);
     void initializeStateMachine();
     void initializeDataObjects();
     void printInfo();
 
-    void Update();
-    // ROS
     void callbackRobotCommand(const odri_ros2_interfaces::msg::RobotCommand::SharedPtr msg);
 
-    // StateMachine
     void transitionRequest(const std::shared_ptr<hidro_ros2_utils::srv::TransitionCommand::Request>  request,
                            const std::shared_ptr<hidro_ros2_utils::srv::TransitionCommand::Response> response);
 
@@ -50,19 +68,19 @@ class OdriGazeboPlugin : public gazebo::ModelPlugin
   private:
     std::string robot_namespace_;
 
-    gazebo::physics::ModelPtr model_;
-    gazebo::physics::WorldPtr world_;
+    gz::sim::Entity model_entity_{gz::sim::kNullEntity};
+    gz::sim::Model  model_;
 
-    gazebo::common::Time last_sim_time_;
-    gazebo::common::Time last_update_time_;
-    double               update_period_ms_;
+    double last_sim_time_{0.0};
+    double last_update_time_{0.0};
+    double update_period_ms_{1.5};
 
-    gazebo::event::ConnectionPtr update_connection_;
-
-    std::vector<gazebo::physics::JointPtr> joints_;
-    std::vector<std::string>               joint_names_;
+    std::vector<gz::sim::Entity> joint_entities_;
+    std::vector<std::string>     joint_names_;
 
     rclcpp::Node::SharedPtr ros_node_;
+    std::shared_ptr<rclcpp::executors::MultiThreadedExecutor> executor_;
+    std::thread executor_thread_;
 
     // ROS members
     rclcpp::Publisher<odri_ros2_interfaces::msg::RobotState>::SharedPtr      pub_robot_state_;

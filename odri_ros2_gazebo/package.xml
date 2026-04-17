@@ -4,11 +4,12 @@
 <package format="3">
   <name>odri_ros2_gazebo</name>
   <version>0.0.0</version>
-  <description>This package contains the plguins to simulate an ODRI joint in Gazebo Classic</description>
+  <description>This package contains the plugins to simulate an ODRI joint in Gazebo Harmonic</description>
   <maintainer email="jmarti@iri.upc.edu">eagle</maintainer>
   <license>TODO: License declaration</license>
   
-  <depend>gazebo_ros</depend>
+  <depend>gz-sim-vendor</depend>
+  <depend>gz-plugin-vendor</depend>
   <depend>hidro_ros2_utils</depend>
   <depend>odri_ros2_interfaces</depend>
   <depend>rclcpp</depend>
@@ -20,6 +21,5 @@
 
   <export>
     <build_type>ament_cmake</build_type>
-    <gazebo_ros plugin_path="${prefix}" />
   </export>
 </package>
