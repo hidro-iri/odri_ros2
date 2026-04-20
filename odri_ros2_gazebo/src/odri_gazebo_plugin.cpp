@@ -97,7 +97,6 @@ void OdriGazeboPlugin::parseSdf(const std::shared_ptr<const sdf::Element> &sdf,
         return;
     }
 
-    // Clone to allow non-const traversal
     sdf::ElementPtr sdf_clone = sdf->Clone();
 
     sdf::ElementPtr     joint_element = sdf_clone->GetElement("joint");
@@ -118,7 +117,6 @@ void OdriGazeboPlugin::parseSdf(const std::shared_ptr<const sdf::Element> &sdf,
             continue;
         }
 
-        // Enable reading position and velocity
         gz::sim::Joint joint(joint_entity);
         joint.EnablePositionCheck(ecm, true);
         joint.EnableVelocityCheck(ecm, true);
@@ -130,13 +128,9 @@ void OdriGazeboPlugin::parseSdf(const std::shared_ptr<const sdf::Element> &sdf,
         {
             std::string param_name = param_element->GetAttribute("name")->GetAsString();
             if (param_name == "safe_position")
-            {
                 safe_position = param_element->Get<double>();
-            }
             else if (param_name == "safe_torque")
-            {
                 safe_torque = param_element->Get<double>();
-            }
             param_element = param_element->GetNextElement("param");
         }
         safe_positions.push_back(safe_position);
@@ -149,9 +143,7 @@ void OdriGazeboPlugin::parseSdf(const std::shared_ptr<const sdf::Element> &sdf,
     }
 
     if (joint_entities_.empty())
-    {
         RCLCPP_ERROR(ros_node_->get_logger(), "Joint names introduced in the URDF plugin do not exist.");
-    }
 
     safe_positions_ = Eigen::Map<Eigen::VectorXd>(safe_positions.data(), safe_positions.size());
     safe_torques_   = Eigen::Map<Eigen::VectorXd>(safe_torques.data(), safe_torques.size());
@@ -161,33 +153,32 @@ void OdriGazeboPlugin::initializeStateMachine()
 {
     state_machine_ = hidro_utils::StateMachineDefault::create();
 
-    state_machine_->assignTransitionCallback("enable", &OdriGazeboPlugin::transEnableCallback, this);
-    state_machine_->assignTransitionCallback("start", &OdriGazeboPlugin::transStartCallback, this);
+    state_machine_->assignTransitionCallback("enable",  &OdriGazeboPlugin::transEnableCallback,  this);
+    state_machine_->assignTransitionCallback("start",   &OdriGazeboPlugin::transStartCallback,   this);
     state_machine_->assignTransitionCallback("disable", &OdriGazeboPlugin::transDisableCallback, this);
-    state_machine_->assignTransitionCallback("stop", &OdriGazeboPlugin::transStopCallback, this);
+    state_machine_->assignTransitionCallback("stop",    &OdriGazeboPlugin::transStopCallback,    this);
 }
 
 void OdriGazeboPlugin::initializeDataObjects()
 {
     const std::size_t nj = joint_entities_.size();
-    des_torques_         = Eigen::VectorXd::Zero(nj);
-    des_positions_       = Eigen::VectorXd::Zero(nj);
-    des_velocities_      = Eigen::VectorXd::Zero(nj);
-    des_pos_gains_       = Eigen::VectorXd::Zero(nj);
-    des_vel_gains_       = Eigen::VectorXd::Zero(nj);
-    max_currents_        = Eigen::VectorXd::Zero(nj);
+    des_torques_    = Eigen::VectorXd::Zero(nj);
+    des_positions_  = safe_positions_;
+    des_velocities_ = Eigen::VectorXd::Zero(nj);
+    des_pos_gains_  = Eigen::VectorXd::Zero(nj);
+    des_vel_gains_  = Eigen::VectorXd::Zero(nj);
+    max_currents_   = Eigen::VectorXd::Zero(nj);
 }
 
 void OdriGazeboPlugin::printInfo()
 {
     RCLCPP_INFO(ros_node_->get_logger(), "Loaded Odri Gazebo Plugin");
-    RCLCPP_INFO(ros_node_->get_logger(), "Odri Joints: ");
-    for (auto j_n : joint_names_)
-    {
+    RCLCPP_INFO(ros_node_->get_logger(), "Odri Joints:");
+    for (const auto& j_n : joint_names_)
         RCLCPP_INFO_STREAM(ros_node_->get_logger(), "\t" << j_n);
-    }
     RCLCPP_INFO_STREAM(ros_node_->get_logger(), "\tSafe positions: " << safe_positions_.transpose());
-    RCLCPP_INFO_STREAM(ros_node_->get_logger(), "\tSafe torques: " << safe_torques_.transpose());
+    RCLCPP_INFO_STREAM(ros_node_->get_logger(), "\tSafe torques:   " << safe_torques_.transpose());
+    RCLCPP_INFO_STREAM(ros_node_->get_logger(), "\tKp=" << kDefaultKp << "  Kd=" << kDefaultKd);
 }
 
 void OdriGazeboPlugin::PreUpdate(const gz::sim::UpdateInfo &info,
@@ -204,7 +195,16 @@ void OdriGazeboPlugin::PreUpdate(const gz::sim::UpdateInfo &info,
         return;
     }
 
-    // Apply control forces
+    Eigen::VectorXd torques, positions, velocities, pos_gains, vel_gains;
+    {
+        std::lock_guard<std::mutex> lock(cmd_mutex_);
+        torques    = des_torques_;
+        positions  = des_positions_;
+        velocities = des_velocities_;
+        pos_gains  = des_pos_gains_;
+        vel_gains  = des_vel_gains_;
+    }
+
     for (std::size_t i = 0; i < joint_entities_.size(); ++i)
     {
         gz::sim::Joint joint(joint_entities_[i]);
@@ -215,8 +215,8 @@ void OdriGazeboPlugin::PreUpdate(const gz::sim::UpdateInfo &info,
         double pos = (pos_opt && !pos_opt->empty()) ? (*pos_opt)[0] : 0.0;
         double vel = (vel_opt && !vel_opt->empty()) ? (*vel_opt)[0] : 0.0;
 
-        double force = des_torques_[i] + des_pos_gains_[i] * (des_positions_[i] - pos) +
-                       des_vel_gains_[i] * (des_velocities_[i] - vel);
+        double force = torques[i] + pos_gains[i] * (positions[i] - pos) +
+                       vel_gains[i] * (velocities[i] - vel);
 
         joint.SetForce(ecm, {force});
     }
@@ -241,17 +241,14 @@ void OdriGazeboPlugin::PostUpdate(const gz::sim::UpdateInfo &info,
         {
             gz::sim::Joint joint(joint_entities_[i]);
 
-            auto pos_opt = joint.Position(ecm);
-            auto vel_opt = joint.Velocity(ecm);
-
-            // Read back the last commanded force (JointForceCmd is set in PreUpdate)
+            auto pos_opt   = joint.Position(ecm);
+            auto vel_opt   = joint.Velocity(ecm);
             auto *force_cmd = ecm.Component<gz::sim::components::JointForceCmd>(joint_entities_[i]);
-            double torque   = (force_cmd && !force_cmd->Data().empty()) ? force_cmd->Data()[0] : 0.0;
 
             odri_ros2_interfaces::msg::MotorState m_state;
-            m_state.position                = (pos_opt && !pos_opt->empty()) ? (*pos_opt)[0] : 0.0;
-            m_state.velocity                = (vel_opt && !vel_opt->empty()) ? (*vel_opt)[0] : 0.0;
-            m_state.torque                  = torque;
+            m_state.position                = (pos_opt    && !pos_opt->empty())         ? (*pos_opt)[0]           : 0.0;
+            m_state.velocity                = (vel_opt    && !vel_opt->empty())         ? (*vel_opt)[0]           : 0.0;
+            m_state.torque                  = (force_cmd  && !force_cmd->Data().empty()) ? force_cmd->Data()[0]   : 0.0;
             m_state.is_enabled              = true;
             m_state.has_index_been_detected = true;
 
@@ -267,6 +264,7 @@ void OdriGazeboPlugin::callbackRobotCommand(const odri_ros2_interfaces::msg::Rob
     std::size_t nj = std::min(msg->motor_commands.size(), joint_entities_.size());
     if (state_machine_->getStateActive() == "running")
     {
+        std::lock_guard<std::mutex> lock(cmd_mutex_);
         for (std::size_t i = 0; i < nj; ++i)
         {
             des_torques_(i)    = msg->motor_commands[i].torque_ref;
@@ -284,19 +282,15 @@ void OdriGazeboPlugin::transitionRequest(
 {
     RCLCPP_INFO_STREAM(ros_node_->get_logger(), "Service request received");
 
-    std::string transition = request->command;
-
     hidro_utils::TransitionResponse t_response;
-    state_machine_->callTransition(transition, t_response);
+    state_machine_->callTransition(request->command, t_response);
 
     response->accepted = t_response.accepted;
     response->result   = t_response.result;
     response->message  = t_response.message;
 
     if (!response->result)
-    {
         RCLCPP_WARN_STREAM(ros_node_->get_logger(), response->message);
-    }
 }
 
 void OdriGazeboPlugin::timerPublishStateCallback()
@@ -308,15 +302,17 @@ void OdriGazeboPlugin::timerPublishStateCallback()
 
 bool OdriGazeboPlugin::transEnableCallback(std::string& message)
 {
-    RCLCPP_INFO_STREAM(ros_node_->get_logger(), "\nEnable: Going to zero position");
-
-    des_torques_   = safe_torques_;
-    des_positions_ = safe_positions_;
-    des_velocities_.setZero();
-    des_pos_gains_.setConstant(2);
-    des_vel_gains_.setConstant(0.2);
-
-    message = "ODRI enabled successful";
+    RCLCPP_INFO_STREAM(ros_node_->get_logger(),
+                       "Enable: Kp=" << kDefaultKp << " Kd=" << kDefaultKd);
+    {
+        std::lock_guard<std::mutex> lock(cmd_mutex_);
+        des_torques_   = safe_torques_;
+        des_positions_ = safe_positions_;
+        des_velocities_.setZero();
+        des_pos_gains_.setConstant(kDefaultKp);
+        des_vel_gains_.setConstant(kDefaultKd);
+    }
+    message = "ODRI enabled";
     return true;
 }
 
@@ -327,6 +323,8 @@ bool OdriGazeboPlugin::transStartCallback(std::string& /*message*/)
 
 bool OdriGazeboPlugin::transDisableCallback(std::string& /*message*/)
 {
+    RCLCPP_INFO(ros_node_->get_logger(), "Disable: zero forces");
+    std::lock_guard<std::mutex> lock(cmd_mutex_);
     des_torques_.setZero();
     des_positions_.setZero();
     des_velocities_.setZero();
@@ -337,6 +335,8 @@ bool OdriGazeboPlugin::transDisableCallback(std::string& /*message*/)
 
 bool OdriGazeboPlugin::transStopCallback(std::string& /*message*/)
 {
+    RCLCPP_INFO(ros_node_->get_logger(), "Stop: zero forces");
+    std::lock_guard<std::mutex> lock(cmd_mutex_);
     des_torques_.setZero();
     des_positions_.setZero();
     des_velocities_.setZero();

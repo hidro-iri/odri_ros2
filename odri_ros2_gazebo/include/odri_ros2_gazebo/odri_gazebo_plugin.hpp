@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <thread>
 
 #include <Eigen/Dense>
@@ -97,12 +98,17 @@ class OdriGazeboPlugin :
     // Other members
     hidro_utils::StateMachineDefaultPtr state_machine_;
 
+    mutable std::mutex cmd_mutex_;  // guards des_* vectors
     Eigen::VectorXd des_torques_;
     Eigen::VectorXd des_positions_;
     Eigen::VectorXd des_velocities_;
     Eigen::VectorXd des_pos_gains_;
     Eigen::VectorXd des_vel_gains_;
     Eigen::VectorXd max_currents_;
+
+    // PD gains used in enabled/running states
+    static constexpr double kDefaultKp = 0.1;
+    static constexpr double kDefaultKd = 0;
 
     Eigen::VectorXd safe_positions_;
     Eigen::VectorXd safe_torques_;
