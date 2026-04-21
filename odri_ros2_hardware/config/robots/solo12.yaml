@@ -1,5 +1,5 @@
 robot:
-    interface: enxa0cec8792aa5   # <-- canvia per la teva interfície Ethernet
+    interface: enp3s0
     joint_modules:
         # Ordre: FL_HAA, FL_HFE, FL_KFE, FR_HAA, FR_HFE, FR_KFE,
         #        HL_HAA, HL_HFE, HL_KFE, HR_HAA, HR_HFE, HR_KFE

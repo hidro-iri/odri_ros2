@@ -26,6 +26,7 @@ RobotInterface::RobotInterface(const std::string& node_name) : Node{node_name}, 
     odri_robot_->WaitUntilReady();
 
     pub_robot_state_ = create_publisher<odri_ros2_interfaces::msg::RobotState>("robot_state", rclcpp::SensorDataQoS());
+    pub_imu_         = create_publisher<sensor_msgs::msg::Imu>("imu", rclcpp::SensorDataQoS());
     subs_motor_commands_ = create_subscription<odri_ros2_interfaces::msg::RobotCommand>(
         "robot_command", rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile(),
         std::bind(&RobotInterface::callbackRobotCommand, this, std::placeholders::_1));
@@ -123,6 +124,30 @@ void RobotInterface::callbackTimerSendCommands()
         robot_state_msg_.motor_states.push_back(m_state);
     }
     pub_robot_state_->publish(robot_state_msg_);
+
+    // --- IMU ---
+    odri_robot_->imu->ParseSensorData();
+    const Eigen::Vector4d& quat  = odri_robot_->imu->GetAttitudeQuaternion();
+    const Eigen::Vector3d& gyro  = odri_robot_->imu->GetGyroscope();
+    const Eigen::Vector3d& accel = odri_robot_->imu->GetLinearAcceleration();
+
+    imu_msg_.header.stamp    = robot_state_msg_.header.stamp;
+    imu_msg_.header.frame_id = "base_link";
+
+    imu_msg_.orientation.x = quat(1);
+    imu_msg_.orientation.y = quat(2);
+    imu_msg_.orientation.z = quat(3);
+    imu_msg_.orientation.w = quat(0);
+
+    imu_msg_.angular_velocity.x    = gyro(0);
+    imu_msg_.angular_velocity.y    = gyro(1);
+    imu_msg_.angular_velocity.z    = gyro(2);
+
+    imu_msg_.linear_acceleration.x = accel(0);
+    imu_msg_.linear_acceleration.y = accel(1);
+    imu_msg_.linear_acceleration.z = accel(2);
+
+    pub_imu_->publish(imu_msg_);
 
     Eigen::VectorXd vec_zero = Eigen::VectorXd::Zero(odri_robot_->GetJoints()->GetNumberMotors());
     if (state_machine_->getStateActive() == "idle" || state_machine_->getStateActive() == "calibrating_offsets" ||

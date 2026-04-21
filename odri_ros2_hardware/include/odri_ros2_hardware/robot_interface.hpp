@@ -15,6 +15,8 @@
 #include "odri_ros2_interfaces/msg/robot_command.hpp"
 #include "odri_ros2_interfaces/msg/robot_state.hpp"
 
+#include "sensor_msgs/msg/imu.hpp"
+
 #include "odri_control_interface/robot.hpp"
 #include "odri_control_interface/utils.hpp"
 
@@ -54,11 +56,13 @@ class RobotInterface : public hidro_ros2_utils::StateMachineInterface
     rclcpp::TimerBase::SharedPtr timer_send_commands_;
 
     rclcpp::Publisher<odri_ros2_interfaces::msg::RobotState>::SharedPtr      pub_robot_state_;
+    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr                      pub_imu_;
     rclcpp::Subscription<odri_ros2_interfaces::msg::RobotCommand>::SharedPtr subs_motor_commands_;
 
     std::shared_ptr<odri_control_interface::Robot> odri_robot_;
 
     odri_ros2_interfaces::msg::RobotState robot_state_msg_;
+    sensor_msgs::msg::Imu                imu_msg_;
 
     std::chrono::high_resolution_clock::time_point t_last_mb_command_;
 

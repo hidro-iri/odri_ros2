@@ -18,6 +18,7 @@ find_package(hidro_ros2_utils REQUIRED)
 find_package(odri_control_interface REQUIRED)
 find_package(odri_ros2_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 # ---- NODE: ROBOT INTERFACE ----
 list(APPEND ROBOT_INTERFACE_SRC src/robot_interface.cpp)
@@ -35,6 +36,7 @@ ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} ament_index_cpp)
 ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} hidro_ros2_utils)
 ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} odri_ros2_interfaces)
 ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} rclcpp)
+ament_target_dependencies(${ROBOT_INTERFACE_EXEC_NAME} sensor_msgs)
 target_link_libraries(${ROBOT_INTERFACE_EXEC_NAME} odri_control_interface::odri_control_interface)
 
 list(APPEND ${PROJECT_NAME}_INSTALL_TARGETS ${ROBOT_INTERFACE_EXEC_NAME})

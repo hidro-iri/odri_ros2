@@ -1,4 +1,4 @@
-robot_interface:
+/odri/robot_interface:
   ros__parameters:
     # Name of the ODRI robot YAML file inside config/robots/
     robot_yaml_name: "solo12.yaml"
