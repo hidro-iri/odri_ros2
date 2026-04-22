@@ -10,6 +10,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>odri_control_interface</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>odri_ros2_interfaces</depend>
