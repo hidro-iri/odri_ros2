@@ -22,8 +22,13 @@ RobotInterface::RobotInterface(const std::string& node_name) : Node{node_name}, 
     yaml_path += "/config/robots/" + params_.robot_yaml_name;
 
     odri_robot_ = odri_control_interface::RobotFromYamlFile(yaml_path);
-    odri_robot_->Start();
-    odri_robot_->WaitUntilReady();
+    try {
+        odri_robot_->Start();
+        odri_robot_->WaitUntilReady();
+    } catch (const std::exception& e) {
+        RCLCPP_FATAL(get_logger(), "Cannot connect to robot: %s", e.what());
+        throw;
+    }
 
     pub_robot_state_ = create_publisher<odri_ros2_interfaces::msg::RobotState>("robot_state", rclcpp::SensorDataQoS());
     pub_imu_         = create_publisher<sensor_msgs::msg::Imu>("imu", rclcpp::SensorDataQoS());
@@ -83,14 +88,14 @@ void RobotInterface::declareParameters()
     std::vector<double> safe_pos_default(params_.n_slaves * 2, 0.0);
     declare_parameter<std::vector<double>>("safe_configuration", safe_pos_default);
     declare_parameter<double>("safe_torque", 0.0);
-    declare_parameter<double>("safe_current", 0.0);
+    declare_parameter<double>("safe_current", 2.0);
     declare_parameter<double>("safe_kp", 0.5);
     declare_parameter<double>("safe_kd", 0.5);
 
     std::vector<double> safe_pos;
     get_parameter<std::vector<double>>("safe_configuration", safe_pos);
     params_.safe_configuration = Eigen::Map<Eigen::VectorXd>(safe_pos.data(), params_.n_slaves * 2);
-    std::cout << "This is the safe configuration: " << params_.safe_configuration << std::endl;
+    RCLCPP_INFO_STREAM(get_logger(), "Safe configuration: " << params_.safe_configuration.transpose());
     get_parameter<double>("safe_torque", params_.safe_torque);
     get_parameter<double>("safe_current", params_.safe_current);
     get_parameter<double>("safe_kp", params_.safe_kp);
@@ -169,6 +174,7 @@ void RobotInterface::callbackTimerSendCommands()
         odri_robot_->joints->SetDesiredVelocities(des_velocities_);
         odri_robot_->joints->SetPositionGains(des_pos_gains_);
         odri_robot_->joints->SetVelocityGains(des_vel_gains_);
+        odri_robot_->joints->SetMaximumCurrents(params_.safe_current);
 
     } else if (state_machine_->getStateActive() == "running") {
         odri_robot_->joints->SetTorques(des_torques_);
@@ -290,16 +296,20 @@ bool RobotInterface::transEndCalibratingSafeConfigurationCallback(std::string& m
 int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
-    std::shared_ptr<odri_interface::RobotInterface> master_board_iface =
-        std::make_shared<odri_interface::RobotInterface>("RobotInterface");
+    int ret = 0;
+    try {
+        std::shared_ptr<odri_interface::RobotInterface> master_board_iface =
+            std::make_shared<odri_interface::RobotInterface>("RobotInterface");
 
-    rclcpp::executors::SingleThreadedExecutor executor;
-    // rclcpp::executors::StaticSingleThreadedExecutor executor;
+        rclcpp::executors::SingleThreadedExecutor executor;
+        // rclcpp::executors::StaticSingleThreadedExecutor executor;
 
-    executor.add_node(master_board_iface);
-
-    executor.spin();
+        executor.add_node(master_board_iface);
+        executor.spin();
+    } catch (const std::exception&) {
+        // already logged with RCLCPP_FATAL in the constructor
+        ret = 1;
+    }
     rclcpp::shutdown();
-
-    return 0;
+    return ret;
 }
