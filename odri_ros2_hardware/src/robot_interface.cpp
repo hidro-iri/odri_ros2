@@ -217,11 +217,11 @@ bool RobotInterface::transEnableCallback(std::string& message)
     return true;
 }
 
-bool RobotInterface::transDisableCallback(std::string& message) { return true; }
+bool RobotInterface::transDisableCallback(std::string& /*message*/) { return true; }
 
-bool RobotInterface::transStartCallback(std::string& message) { return true; }
+bool RobotInterface::transStartCallback(std::string& /*message*/) { return true; }
 
-bool RobotInterface::transStopCallback(std::string& message) { return true; }
+bool RobotInterface::transStopCallback(std::string& /*message*/) { return true; }
 
 bool RobotInterface::transStartCalibratingOffsetsCallback(std::string& message)
 {
