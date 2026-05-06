@@ -23,3 +23,7 @@
     # Torque and current limits during safe hold
     safe_torque: 0.5   # Nm
     safe_current: 4.0  # A
+    joint_names: ["FL_HAA", "FL_HFE", "FL_KFE",
+                  "FR_HAA", "FR_HFE", "FR_KFE",
+                  "HL_HAA", "HL_HFE", "HL_KFE",
+                  "HR_HAA", "HR_HFE", "HR_KFE"]

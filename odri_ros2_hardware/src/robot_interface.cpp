@@ -30,6 +30,8 @@ RobotInterface::RobotInterface(const std::string& node_name) : Node{node_name}, 
         throw;
     }
 
+    pub_joint_states_ = create_publisher<sensor_msgs::msg::JointState>(
+        "joint_states", rclcpp::SensorDataQoS());
     pub_robot_state_ = create_publisher<odri_ros2_interfaces::msg::RobotState>("robot_state", rclcpp::SensorDataQoS());
     pub_imu_         = create_publisher<sensor_msgs::msg::Imu>("imu", rclcpp::SensorDataQoS());
     subs_motor_commands_ = create_subscription<odri_ros2_interfaces::msg::RobotCommand>(
@@ -100,6 +102,9 @@ void RobotInterface::declareParameters()
     get_parameter<double>("safe_current", params_.safe_current);
     get_parameter<double>("safe_kp", params_.safe_kp);
     get_parameter<double>("safe_kd", params_.safe_kd);
+
+    declare_parameter<std::vector<std::string>>("joint_names", {});
+    get_parameter<std::vector<std::string>>("joint_names", params_.joint_names);
 }
 
 void RobotInterface::callbackTimerSendCommands()
@@ -110,7 +115,17 @@ void RobotInterface::callbackTimerSendCommands()
     velocities_ = odri_robot_->joints->GetVelocities();
     torques_    = odri_robot_->joints->GetMeasuredTorques();
 
-    robot_state_msg_.header.stamp = get_clock()->now();
+    const rclcpp::Time now = get_clock()->now();
+
+    sensor_msgs::msg::JointState js_msg;
+    js_msg.header.stamp = now;
+    js_msg.name         = params_.joint_names;
+    js_msg.position     = {positions_.data(),  positions_.data()  + positions_.size()};
+    js_msg.velocity     = {velocities_.data(), velocities_.data() + velocities_.size()};
+    js_msg.effort       = {torques_.data(),    torques_.data()    + torques_.size()};
+    pub_joint_states_->publish(js_msg);
+
+    robot_state_msg_.header.stamp = now;
     robot_state_msg_.motor_states.clear();
 
     if (odri_robot_->IsReady()) {

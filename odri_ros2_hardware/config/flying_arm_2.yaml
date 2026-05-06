@@ -8,4 +8,5 @@ odri/robot_interface:
     safe_kp: 0.5
     safe_kd: 6.0
     safe_current: 5.0
+    joint_names: ["flying_arm_2__j_bl_link1", "flying_arm_2__j_link1_link2"]
 

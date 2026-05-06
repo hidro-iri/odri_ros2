@@ -16,6 +16,7 @@
 #include "odri_ros2_interfaces/msg/robot_state.hpp"
 
 #include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 
 #include "odri_control_interface/robot.hpp"
 #include "odri_control_interface/utils.hpp"
@@ -55,6 +56,7 @@ class RobotInterface : public hidro_ros2_utils::StateMachineInterface
     private:
     rclcpp::TimerBase::SharedPtr timer_send_commands_;
 
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr               pub_joint_states_;
     rclcpp::Publisher<odri_ros2_interfaces::msg::RobotState>::SharedPtr      pub_robot_state_;
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr                      pub_imu_;
     rclcpp::Subscription<odri_ros2_interfaces::msg::RobotCommand>::SharedPtr subs_motor_commands_;
@@ -87,6 +89,7 @@ class RobotInterface : public hidro_ros2_utils::StateMachineInterface
         double          safe_kd;
         double          safe_torque;
         double          safe_current;
+        std::vector<std::string> joint_names;
     } params_;
 };
 
